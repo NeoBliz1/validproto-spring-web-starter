@@ -1,0 +1,133 @@
+syntax = "proto3";
+
+package io.github.neobliz1.validproto.test;
+
+option java_package = "io.github.neobliz1.validproto.test";
+option java_multiple_files = true;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/wrappers.proto";
+
+enum SystemStatus {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_ACTIVE = 1;
+  STATUS_SUSPENDED = 2;
+  STATUS_DECOMMISSIONED = 3;
+}
+
+message ComplexTestPayload {
+
+  // 1. Strings: Web, Network, Identity & Patterns
+  string user_email = 1 [(buf.validate.field).string.email = true];
+
+  string system_code = 2 [
+    (buf.validate.field).string.pattern = "^SYS-[A-Z]{3}-[0-9]{4}$",
+    (buf.validate.field).string.min_len = 12,
+    (buf.validate.field).string.max_len = 12
+  ];
+
+  string server_ip = 3 [
+    (buf.validate.field).string.ip = true // Validates BOTH IPv4 and IPv6 strings
+  ];
+
+  string client_uuid = 4 [
+    (buf.validate.field).string.uuid = true // Validates RFC 4122 compliance
+  ];
+
+  string homepage_url = 5 [
+    (buf.validate.field).string.uri = true // Validates strict absolute URI format
+  ];
+
+  // 2. Numerics: Floating-point, Constants, and In/NotIn Lists
+  double latitude = 6 [
+    (buf.validate.field).double.gte = -90.0,
+    (buf.validate.field).double.lte = 90.0
+  ];
+
+  double longitude = 7 [
+    (buf.validate.field).double.gte = -180.0,
+    (buf.validate.field).double.lte = 180.0
+  ];
+
+  int32 priority_level = 8 [
+    (buf.validate.field).int32.in = 1,
+    (buf.validate.field).int32.in = 3,
+    (buf.validate.field).int32.in = 5,
+    (buf.validate.field).int32.not_in = 0
+  ];
+
+  // 3. Binary Payloads: Bytes array constraints
+  bytes encrypted_signature = 9 [
+    (buf.validate.field).bytes.len = 32 // Forces binary signature to be exactly 32 bytes
+  ];
+
+  // 4. Booleans: Explicit constant states
+  bool compliance_accepted = 10 [
+    (buf.validate.field).bool.const = true // Fails if the boolean is explicitly set to false
+  ];
+
+  // 5. Enums: State Gates & Rule Exclusions
+  SystemStatus status = 11 [
+    (buf.validate.field).enum.defined_only = true,
+    (buf.validate.field).enum.not_in = 0 // Explicitly blocks the STATUS_UNSPECIFIED fallback
+  ];
+
+  // 6. Collections & Multi-value Boundaries
+  repeated int32 security_roles = 12 [
+    (buf.validate.field).repeated.min_items = 1,
+    (buf.validate.field).repeated.max_items = 5,
+    (buf.validate.field).repeated.unique = true,
+    (buf.validate.field).repeated.items.int32.gt = 1000
+  ];
+
+  // 7. Associative Structures (Maps)
+  map<string, string> metadata_tags = 13 [
+    (buf.validate.field).map.min_pairs = 1,
+    (buf.validate.field).map.keys.string.pattern = "^[a-z0-9_-]+$",
+    (buf.validate.field).map.values.string.min_len = 1
+  ];
+
+  // 8. Well-Known Types (WKTs): Timestamps and Durations
+  google.protobuf.Timestamp execution_time = 14 [
+    (buf.validate.field).required = true, // FIX: Use global required statement on fields
+    (buf.validate.field).timestamp.gt_now = true // Must be a future timestamp execution
+  ];
+
+  google.protobuf.Duration processing_timeout = 15 [
+    (buf.validate.field).required = true, // FIX: Use global required statement on fields
+    (buf.validate.field).duration.lte.seconds = 60 // Max 1 minute duration window allowed
+  ];
+
+  // 9. Wrapper Object Handling via explicit sub-message CEL rule tracking
+  google.protobuf.StringValue nullable_description = 16 [
+    (buf.validate.field).cel = {
+      id: "nullable_description.min_len",
+      message: "Value must be empty or at least 5 characters long",
+      expression: "this.size() == 0 || this.size() >= 5"
+    }
+  ];
+
+  // 10. Structural Integrity: Oneof boundary states
+  oneof authentication_payload {
+    option (buf.validate.oneof).required = true;
+
+    string api_token = 17 [(buf.validate.field).string.min_len = 32];
+    int64 oauth_id   = 18 [(buf.validate.field).int64.gt = 0];
+  }
+
+  // 11. Cross-Field Logic: Advanced CEL rule evaluation expressions
+  message ProcessingWindow {
+    int32 start_hour = 1 [(buf.validate.field).int32.gte = 0, (buf.validate.field).int32.lte = 23];
+    int32 end_hour   = 2 [(buf.validate.field).int32.gte = 0, (buf.validate.field).int32.lte = 23];
+  }
+
+  ProcessingWindow window = 19 [
+    (buf.validate.field).cel = {
+      id: "processing_window.duration",
+      message: "End hour must be strictly greater than start hour",
+      expression: "this.end_hour > this.start_hour"
+    }
+  ];
+}
