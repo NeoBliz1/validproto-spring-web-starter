@@ -3,6 +3,7 @@ package io.github.neobliz1.validproto;
 import static io.github.neobliz1.validproto.TestUtil.createValidBase;
 import static io.github.neobliz1.validproto.TestUtil.performValidPost;
 import static io.github.neobliz1.validproto.TestUtil.runAllEndpoints;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Duration;
@@ -13,9 +14,10 @@ import io.github.neobliz1.validproto.test.ComplexTestPayload;
 import io.github.neobliz1.validproto.test.SystemStatus;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Flux;
 
@@ -51,6 +53,18 @@ class HttpValidateProtoIntegrationTest {
     @Test
     void shouldReturn200_whenStreamPayloadIsValid() {
         performValidPost(webTestClient, REACTIVE_STREAM_URL, Flux.just(createValidBase().build()));
+    }
+
+    @Test
+    void shouldReturn200_whenStandardJsonPayloadIsValid() {
+        TestApplication.StandardJsonPayload validJson = new TestApplication.StandardJsonPayload();
+        validJson.setName("John Doe");
+
+        webTestClient.post().uri("/json/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(validJson)
+                .exchange()
+                .expectStatus().isOk();
     }
 
     // ==========================================
@@ -210,5 +224,25 @@ class HttpValidateProtoIntegrationTest {
     void shouldReturn400_whenCelWindowIsInverted() {
         ComplexTestPayload.ProcessingWindow win = ComplexTestPayload.ProcessingWindow.newBuilder().setStartHour(15).setEndHour(10).build();
         runAllEndpoints(webTestClient, createValidBase().setWindow(win), "window");
+    }
+
+    @Test
+    void shouldReturn400_whenStandardJsonPayloadIsInvalid() {
+        TestApplication.StandardJsonPayload invalidJson = new TestApplication.StandardJsonPayload();
+        invalidJson.setName(""); // Invalid: breaks @NotBlank
+
+        webTestClient.post().uri("/json/validate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(invalidJson)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.violations").value(violations -> {
+                    String str = violations.toString();
+                    assertTrue(
+                            str.contains("blank"),
+                            "Expected standard JSON validation to trigger! Got: " + str
+                    );
+                });
     }
 }

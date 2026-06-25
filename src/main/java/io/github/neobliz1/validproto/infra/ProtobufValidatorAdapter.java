@@ -2,8 +2,6 @@ package io.github.neobliz1.validproto.infra;
 
 import static java.util.Objects.requireNonNull;
 
-import build.buf.protovalidate.ValidationResult;
-import build.buf.protovalidate.Violation;
 import com.google.protobuf.Message;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -84,20 +82,22 @@ public class ProtobufValidatorAdapter implements Validator, ExecutableValidator 
      */
     @Override
     public <T> Set<ConstraintViolation<T>> validate(T object, Class<?>... groups) {
-        Set<ConstraintViolation<T>> violations = new HashSet<>();
         if (object instanceof Message message) {
+            Set<ConstraintViolation<T>> violations = new HashSet<>();
             try {
-                ValidationResult result = protovalidateEngine.validate(message);
+                build.buf.protovalidate.ValidationResult result = protovalidateEngine.validate(message);
                 if (!result.getViolations().isEmpty()) {
-                    for (Violation violation : result.getViolations()) {
+                    for (build.buf.protovalidate.Violation violation : result.getViolations()) {
                         violations.add(new ProtobufConstraintViolation<>(object, violation));
                     }
                 }
             } catch (Exception e) {
                 violations.add(new ProtobufConstraintViolation<>(object, e.getMessage()));
             }
+            return violations;
         }
-        return violations;
+
+        return Collections.emptySet();
     }
 
     /**
