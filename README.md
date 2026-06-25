@@ -33,6 +33,33 @@ Add the following dependency to your `pom.xml`:
 </dependency>
 ```
 
+### Required Dependencies
+
+To use ValidProto Spring Web Starter, you need to include the following dependencies in your `pom.xml`:
+
+```xml
+<properties>
+    <protobuf.version>4.34.1</protobuf.version>
+    <protovalidate.version>1.2.2</protovalidate.version>
+</properties>
+
+<dependencies>
+    <!-- Protocol Buffers runtime -->
+    <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>${protobuf.version}</version>
+    </dependency>
+    
+    <!-- Protovalidate runtime -->
+    <dependency>
+        <groupId>build.buf</groupId>
+        <artifactId>protovalidate</artifactId>
+        <version>${protovalidate.version}</version>
+    </dependency>
+</dependencies>
+```
+
 ### Gradle
 
 Add the following dependency to your `build.gradle`:
@@ -45,11 +72,14 @@ implementation 'io.github.neobliz1:validproto-spring-web-starter:0.0.1'
 
 ### 1. Define your Protobuf schema with validation rules
 
+Create a `.proto` file and import the buf.validate constraints:
+
 ```proto
 syntax = "proto3";
 
 package com.example;
 
+// Import protovalidate constraints
 import "buf/validate/validate.proto";
 
 message CreateUserRequest {
@@ -57,6 +87,36 @@ message CreateUserRequest {
   string name = 2 [(buf.validate.field).string.min_len = 1, (buf.validate.field).string.max_len = 100];
   int32 age = 3 [(buf.validate.field).int32.gte = 0, (buf.validate.field).int32.lte = 150];
 }
+```
+
+**Note:** To use `buf/validate/validate.proto`, you need to either:
+- Download the proto files from the [protovalidate repository](https://github.com/bufbuild/protovalidate)
+- Use BSR (Buf Schema Registry) to reference the official buf.validate bundle
+- Add the protovalidate dependency which includes the necessary proto files
+
+For Maven, add the following to your `pom.xml` to download the proto sources:
+
+```xml
+<plugin>
+    <groupId>org.xolstice.maven.plugins</groupId>
+    <artifactId>protobuf-maven-plugin</artifactId>
+    <version>0.6.1</version>
+    <configuration>
+        <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+        <pluginId>grpc-java</pluginId>
+        <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc-java.version}:exe:${os.detected.classifier}</pluginArtifact>
+        <additionalProtoPathElements>
+            <additionalProtoPathElement>${project.build.directory}/dependencies/proto</additionalProtoPathElement>
+        </additionalProtoPathElements>
+    </configuration>
+    <executions>
+        <execution>
+            <goals>
+                <goal>compile</goal>
+            </goals>
+        </execution>
+    </executions>
+</plugin>
 ```
 
 ### 2. Enable validation on your controller
@@ -75,9 +135,61 @@ public class UserController {
 }
 ```
 
-### 3. Build and run
+### 3. Configure Maven build for Protobuf compilation
 
-The starter will automatically configure validation for all Protobuf messages in your controllers.
+Add the `protobuf-maven-plugin` and `os-maven-plugin` extensions to your `pom.xml`:
+
+```xml
+<build>
+    <extensions>
+        <extension>
+            <groupId>kr.motd.maven</groupId>
+            <artifactId>os-maven-plugin</artifactId>
+            <version>1.7.1</version>
+        </extension>
+    </extensions>
+    
+    <plugins>
+        <plugin>
+            <groupId>org.xolstice.maven.plugins</groupId>
+            <artifactId>protobuf-maven-plugin</artifactId>
+            <version>0.6.1</version>
+            <configuration>
+                <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
+                <clearOutputDirectory>false</clearOutputDirectory>
+            </configuration>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>compile</goal>
+                        <goal>test-compile</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
+
+### 4. Generate Protobuf classes and validators
+
+Run the following Maven command to generate Java classes from your `.proto` files:
+
+```bash
+mvn compile
+```
+
+The `protobuf-maven-plugin` will automatically compile your Protobuf definitions and generate the corresponding Java classes in `target/generated-sources/protobuf/java`. The generated classes include:
+
+- **Message classes** for each `message` definition
+- **Enum classes** for each `enum` definition
+- **Builder classes** for constructing messages immutably
+- **Validation constraints** from `buf.validate` annotations (compiled into the generated code)
+
+The generated classes contain embedded validation rules that are executed at runtime by the protovalidate library. No additional validator classes need to be generated separately - validation is embedded in the generated Protobuf code.
+
+After generation, you can use the generated classes in your Spring controllers with `@ValidProto` validation.
 
 ## Supported Validation Rules
 
@@ -122,6 +234,87 @@ ValidProto supports all protovalidate constraints:
 ### Complex Validation
 - **Oneof validation** - Enforces oneof field requirements
 - **CEL rules** - Custom expressions for cross-field validation
+
+## Protovalidate Dependencies and Setup
+
+### Required Dependencies
+
+To use ValidProto Spring Web Starter with Protobuf validation, you need to include the following dependencies in your project's `pom.xml`:
+
+```xml
+<properties>
+    <protobuf.version>4.34.1</protobuf.version>
+    <protovalidate.version>1.2.2</protovalidate.version>
+</properties>
+
+<dependencies>
+    <!-- Protocol Buffers runtime and utilities -->
+    <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>${protobuf.version}</version>
+    </dependency>
+    
+    <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java-util</artifactId>
+        <version>${protobuf.version}</version>
+    </dependency>
+    
+    <!-- Protovalidate runtime for validation constraints -->
+    <dependency>
+        <groupId>build.buf</groupId>
+        <artifactId>protovalidate</artifactId>
+        <version>${protovalidate.version}</version>
+    </dependency>
+    
+    <!-- OS plugin for platform-specific protoc binaries -->
+    <dependency>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.7.1</version>
+    </dependency>
+</dependencies>
+```
+
+### Build Configuration
+
+Add the Maven plugins to your `pom.xml` build section:
+
+```xml
+<build>
+    <extensions>
+        <!-- Detects OS to download appropriate protoc binary -->
+        <extension>
+            <groupId>kr.motd.maven</groupId>
+            <artifactId>os-maven-plugin</artifactId>
+            <version>1.7.1</version>
+        </extension>
+    </extensions>
+    
+    <plugins>
+        <!-- Compiles .proto files to Java classes -->
+        <plugin>
+            <groupId>org.xolstice.maven.plugins</groupId>
+            <artifactId>protobuf-maven-plugin</artifactId>
+            <version>0.6.1</version>
+            <configuration>
+                <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+                <outputDirectory>${project.build.directory}/generated-sources</outputDirectory>
+                <clearOutputDirectory>false</clearOutputDirectory>
+            </configuration>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>compile</goal>
+                        <goal>test-compile</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+```
 
 ## API Reference
 
@@ -287,9 +480,41 @@ mvn test
    - Verify your `.proto` files have the correct validation rules
    - Check that you're using the correct field types
 
-3. **Build errors**
-   - Ensure protobuf compiler plugin is configured
-   - Verify protovalidate dependencies are included
+3. **Build errors with protovalidate imports**
+   - Ensure you have the `buf/validate/validate.proto` file available in your proto path
+   - Add the protovalidate dependency to download the proto sources
+   - Configure the protobuf-maven-plugin with the correct proto path
+
+4. **Missing generated classes**
+   - Run `mvn compile` to generate Protobuf classes
+   - Check that `target/generated-sources/protobuf/java` contains your generated classes
+   - Ensure your IDE recognizes the generated sources directory
+
+5. **Protoc compiler not found**
+   - The `os-maven-plugin` should automatically detect your OS
+   - Check that `${os.detected.classifier}` is properly set in your build
+   - Manually specify the protoc executable if needed
+
+### Dependency Resolution Issues
+
+If you encounter dependency conflicts with protobuf versions:
+
+```xml
+<dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>4.34.1</version>
+        </dependency>
+        <dependency>
+            <groupId>build.buf</groupId>
+            <artifactId>protovalidate</artifactId>
+            <version>1.2.2</version>
+        </dependency>
+    </dependencies>
+</dependencyManagement>
+```
 
 ## Contributing
 
