@@ -23,7 +23,7 @@ jobs:
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Compile, Sign, and Deploy with Maven
-        run: mvn clean deploy -Prelease -DskipTests=false
+        run: mvn clean deploy -Dmaven.deploy.skip=true -DskipTests=false
         env:
           MAVEN_USERNAME: ${{ secrets.SONATYPE_TOKEN_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.SONATYPE_TOKEN_PASSWORD }}
