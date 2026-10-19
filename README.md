@@ -1,9 +1,10 @@
 # ValidProto Spring Web Starter
 
+[![CI](https://github.com/NeoBliz1/validproto-spring-web-starter/actions/workflows/ci.yml/badge.svg)](https://github.com/NeoBliz1/validproto-spring-web-starter/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.neobliz1/validproto-spring-web-starter)](https://central.sonatype.com/artifact/io.github.neobliz1/validproto-spring-web-starter)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.5-green.svg)](https://spring.io/projects/spring-boot)
-[![Java](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/)
-[![Tests](https://img.shields.io/badge/Tests-31%20passed-green.svg)](https://maven.apache.org/surefire/)
+[![Java](https://img.shields.io/badge/Java-21-blue.svg)](https://openjdk.org/projects/jdk/21/)
 
 Automated declarative parameter validation for Protobuf payloads over HTTP in Spring Web controllers.
 

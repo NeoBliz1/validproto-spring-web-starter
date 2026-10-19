@@ -50,7 +50,7 @@ public class HttpValidateProtoAutoConfiguration {
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     @ConditionalOnMissingBean(LocalValidatorFactoryBean.class)
-    public static LocalValidatorFactoryBean defaultValidator(
+    public LocalValidatorFactoryBean defaultValidator(
             ApplicationContext applicationContext,
             ObjectProvider<ValidationConfigurationCustomizer> customizers) {
         LocalValidatorFactoryBean factoryBean = new LocalValidatorFactoryBean();
@@ -72,7 +72,7 @@ public class HttpValidateProtoAutoConfiguration {
     @Bean
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     @ConditionalOnMissingBean(ProtobufValidatorAdapter.class)
-    public ProtobufValidatorAdapter protobufValidatorAdapter() {
+    public static ProtobufValidatorAdapter protobufValidatorAdapter() {
         return new ProtobufValidatorAdapter(ValidatorFactory.newBuilder().build());
     }
 
@@ -91,7 +91,7 @@ public class HttpValidateProtoAutoConfiguration {
     @Role(BeanDefinition.ROLE_INFRASTRUCTURE)
     @Order(Ordered.HIGHEST_PRECEDENCE+100)
     @ConditionalOnMissingBean(name = "protobufMethodValidationPostProcessor")
-    public MethodValidationPostProcessor protobufMethodValidationPostProcessor(
+    public static MethodValidationPostProcessor protobufMethodValidationPostProcessor(
             Environment environment,
             ProtobufValidatorAdapter protobufValidatorAdapter) {
         MethodValidationPostProcessor processor = new MethodValidationPostProcessor();
